@@ -546,15 +546,16 @@ window.Horror = (() => {
     LX.setTransform(1, 0, 0, 1, 0, 0);
     LX.globalCompositeOperation = 'source-over';
     const local = S.players[S.localId];
-    const dimmer = local && local.role === 'farzad'; // فرزاد همه‌جا را کم‌واضح می‌بیند
-    LX.fillStyle = dimmer ? 'rgba(2,1,6,.72)' : 'rgba(2,1,6,.975)';
+    const dimmer = local && local.role === 'farzad'; // فرزاد همه‌جا را کم‌کاملاً می‌بیند (هاله‌ی روح)
+    LX.fillStyle = dimmer ? 'rgba(2,1,6,.40)' : 'rgba(2,1,6,.975)';
     LX.fillRect(0, 0, L.width, L.height);
     LX.globalCompositeOperation = 'destination-out';
     const fl = .93 + .07 * Math.sin(S.mt * 31) * Math.random();
     for (const p of Object.values(S.players)) {
       if (p.x === null) continue;
       if (p.role === 'farzad') {
-        if (p.stun > 0) lightHole(p.x, p.y, 0, Math.PI, 24, 300, 1);
+        // هاله‌ی بزرگ روشن برای روح (هر وقت stun باشد هم تغییری نمی‌کند)
+        lightHole(p.x, p.y, 0, Math.PI, 24, 340, 1);
         continue;
       }
       const Rg = p.li ? (p.angry > 0 ? 270 : 330) : 95;
