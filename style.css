@@ -1,554 +1,135 @@
-/* ============================== نقشه‌ی مهاجران - استایل ============================== */
+/* ===== سایهٔ خندان - استایل ===== */
 :root {
-  --primary: #e94560;
-  --secondary: #4ecdc4;
-  --dark: #1a1a2e;
-  --darker: #16213e;
-  --light: #f1faee;
-  --accent: #ffeaa7;
+  --bg: #050308;
+  --panel: #150a1f;
+  --panel-2: #1d1030;
+  --blood: #ff2a4d;
+  --blood-dark: #7a0020;
+  --teal: #5ee7ff;
+  --gold: #ffd36e;
+  --pink: #ff4fa3;
+  --blue: #2d7dd2;
+  --text: #eee6f4;
+  --muted: #a79bb5;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Vazirmatn', Tahoma, sans-serif; user-select: none; }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: 'Vazirmatn', Tahoma, sans-serif;
-  background: var(--dark);
-  color: var(--light);
-  user-select: none;
-  -webkit-user-select: none;
-}
+.hide { display: none !important; }
+.screen { position: fixed; inset: 0; }
 
-.hidden { display: none !important; }
-
-/* ============================== صفحه منو ============================== */
-#menu-screen {
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
+/* ===== صفحه اصلی / لابی ===== */
+.screen { display: flex; align-items: center; justify-content: center; }
+#menu, #lobby {
   overflow-y: auto;
+  background: radial-gradient(1200px 700px at 50% -10%, #230a2e 0%, #050308 70%);
+  padding: 16px;
 }
+.menu-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 520px; text-align: center; }
+.logo-shadow { font-size: 64px; filter: drop-shadow(0 0 28px rgba(255,42,77,.6)); animation: floaty 3.5s ease-in-out infinite; }
+.logo-shadow.small { font-size: 44px; }
+@keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-12px) } }
+.title { font-size: 38px; font-weight: 800; color: var(--blood); text-shadow: 0 0 22px rgba(255,42,77,.8), 0 0 60px rgba(122,0,32,.8); }
+.title.small { font-size: 28px; }
+.story { max-width: 460px; line-height: 2.1; font-size: 14px; color: #cbbfd8; }
 
-.menu-container {
-  width: 100%;
-  max-width: 480px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
+.card { width: 100%; background: rgba(21,10,31,.92); border: 1px solid rgba(255,42,77,.35); border-radius: 18px; padding: 18px; box-shadow: 0 0 40px rgba(255,42,77,.15), inset 0 0 40px rgba(0,0,0,.5); }
+.field { display: flex; flex-direction: column; gap: 8px; text-align: right; }
+.field span, .field-label { font-size: 13px; color: var(--muted); font-weight: 700; text-align: right; display: block; margin-bottom: 6px; }
+input { font-family: 'Vazirmatn'; background: #0d0616; border: 1.5px solid #3a2448; color: var(--text); border-radius: 12px; padding: 12px 14px; font-size: 16px; outline: none; transition: border .2s, box-shadow .2s; width: 100%; }
+input:focus { border-color: var(--blood); box-shadow: 0 0 12px rgba(255,42,77,.4); }
 
-.logo-area {
-  text-align: center;
-  animation: float 3s ease-in-out infinite;
-}
+.modes { display: grid; gap: 10px; margin: 10px 0 4px; }
+.mode-btn { display: flex; flex-direction: column; gap: 3px; text-align: right; background: #0d0616; border: 1.5px solid #3a2448; color: var(--text); border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: all .2s; font-family: inherit; }
+.mode-btn .mode-title { font-weight: 800; font-size: 16px; }
+.mode-btn .mode-desc { font-size: 11px; color: var(--muted); }
+.mode-btn.active { border-color: var(--blood); background: #1d0612; box-shadow: 0 0 16px rgba(255,42,77,.35); }
+.mode-btn.active .mode-title { color: #ff97a8; }
 
-.game-logo {
-  font-size: 72px;
-  filter: drop-shadow(0 4px 12px rgba(233, 69, 96, 0.5));
-}
+.btn { font-family: 'Vazirmatn'; font-weight: 800; border-radius: 30px; padding: 13px 28px; cursor: pointer; border: none; font-size: 16px; transition: all .2s; }
+.btn-primary { background: linear-gradient(180deg,#ff2a4d,#b30f2f); color: #fff; box-shadow: 0 0 22px rgba(255,42,77,.45); width: 100%; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255,42,77,.6); }
+.btn-ghost { background: transparent; color: var(--text); border: 1.5px solid #3a2448; }
+.btn-ghost:hover { border-color: var(--blood); color: #ff97a8; }
 
-.game-title {
-  font-size: 36px;
-  font-weight: 900;
-  background: linear-gradient(90deg, #ff6b6b, #ffeaa7, #4ecdc4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 6px;
-}
+.divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; color: var(--muted); font-size: 12px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #3a2448; }
+.join-row { display: flex; gap: 8px; }
+.join-row input { flex: 1; letter-spacing: 2px; }
+.join-row .btn { white-space: nowrap; }
+.error-text { color: #ff8095; font-size: 12px; min-height: 18px; margin-top: 6px; }
+.tips { font-size: 11px; color: #6f627a; line-height: 1.8; }
 
-.game-subtitle {
-  color: #a0aec0;
-  font-size: 14px;
-}
+/* ===== لابی ===== */
+.room-code-box { display: flex; align-items: center; gap: 12px; background: #0d0616; border: 1.5px dashed var(--gold); border-radius: 14px; padding: 10px 18px; box-shadow: 0 0 24px rgba(255,211,110,.18); }
+.room-code { font-family: monospace; font-size: 34px; letter-spacing: 8px; color: var(--gold); font-weight: 800; }
+.copy-btn { background: none; border: none; font-size: 26px; cursor: pointer; }
+.lobby-mode { font-size: 13px; color: var(--teal); background: rgba(94,231,255,.08); border-radius: 10px; padding: 6px 12px; }
+.lobby-players { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.player-row { display: flex; align-items: center; gap: 10px; background: #0d0616; border: 1px solid #2c1c3d; border-radius: 12px; padding: 10px 14px; }
+.player-role { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 20px; min-width: 54px; text-align: center; }
+.role-fardeen { background: #0d2a44; color: #6db8ff; border: 1px solid #2d7dd2; }
+.role-dian { background: #3d0d26; color: #ff8fbf; border: 1px solid #ff4fa3; }
+.role-farzad { background: #1a0014; color: #c07dff; border: 1px solid #8a3cff; }
+.player-name { flex: 1; text-align: right; font-size: 14px; }
+.host-badge { font-size: 11px; color: var(--gold); border: 1px solid var(--gold); border-radius: 10px; padding: 1px 7px; }
+.lobby-status { font-size: 12px; color: var(--muted); min-height: 18px; }
+#btn-start-game[disabled] { opacity: .35; cursor: not-allowed; filter: grayscale(1); }
 
-.menu-card {
-  background: rgba(22, 33, 62, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 20px;
-  width: 100%;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
+/* ===== صفحه بازی ===== */
+#game-screen { background: #050308; }
+#game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
 
-.mode-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px;
-  border-radius: 12px;
-}
+.hud { position: absolute; z-index: 5; }
+.hud-top { top: 10px; right: 10px; left: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.hud-box { pointer-events: auto; background: rgba(10,4,18,.82); border: 1px solid rgba(255,42,77,.3); backdrop-filter: blur(6px); border-radius: 12px; padding: 7px 14px; font-size: 15px; font-weight: 800; }
+.keys-box { letter-spacing: 3px; font-size: 18px; }
+.hud-code { font-size: 13px; display: flex; align-items: center; gap: 6px; color: var(--gold); letter-spacing: 2px; font-family: monospace; }
+.copy-mini { background: none; border: none; font-size: 15px; cursor: pointer; }
+.hud-btn { pointer-events: auto; margin-inline-start: auto; background: rgba(10,4,18,.85); color: var(--text); border: 1px solid rgba(255,42,77,.35); border-radius: 12px; padding: 8px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.hud-btn:hover { border-color: var(--blood); color: #ff97a8; }
 
-.tab-btn {
-  flex: 1;
-  padding: 12px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #a0aec0;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.25s;
-}
+.banner { position: absolute; top: 13%; left: 0; right: 0; text-align: center; font-size: 21px; font-weight: 800; color: #fff; text-shadow: 0 0 16px #000, 0 0 14px var(--blood); z-index: 4; pointer-events: none; opacity: 0; padding: 0 16px; }
+.banner.show { animation: bannerPulse 3s forwards; }
+@keyframes bannerPulse { 0% { opacity: 0; transform: scale(.7); } 12% { opacity: 1; transform: scale(1.05); } 85% { opacity: 1; } 100% { opacity: 0; } }
 
-.tab-btn.active {
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
-}
+.action-cluster { position: absolute; left: 16px; bottom: 40px; display: flex; flex-direction: column; gap: 12px; z-index: 5; }
+.action-btn { width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 35%, #ffe9a8, #e0a020); font-size: 30px; cursor: pointer; box-shadow: 0 0 22px rgba(255,211,110,.5); transition: all .15s; }
+.action-btn:active { transform: scale(.92); }
+.action-btn.off { background: #222; box-shadow: none; border-color: #444; filter: grayscale(1); }
+.flash-burst { border-color: var(--teal); background: radial-gradient(circle at 50% 35%, #d4f6ff, #4ecdc4); box-shadow: 0 0 22px rgba(94,231,255,.6); }
+.flash-burst.cooldown { filter: grayscale(1) brightness(.6); box-shadow: none; }
 
-.mode-panel { display: none; }
-.mode-panel.active { display: block; }
+.chat-panel { position: absolute; right: 12px; bottom: 12px; width: min(300px, 46vw); z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+.chat-messages { background: rgba(8,3,15,.78); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 8px 10px; max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.chat-line { line-height: 1.6; }
+.chat-line b { color: var(--teal); }
+.chat-form { display: flex; gap: 6px; }
+.chat-form input { padding: 8px 10px; font-size: 13px; border-radius: 10px; }
+.chat-send { background: var(--blood-dark); border: 1px solid var(--blood); color: #fff; border-radius: 10px; padding: 0 14px; cursor: pointer; font-family: inherit; font-size: 12px; }
 
-.field-label {
-  display: block;
-  font-size: 12px;
-  color: #a0aec0;
-  margin-bottom: 6px;
-  text-align: right;
-}
+.quiz-overlay { position: absolute; inset: 0; z-index: 8; background: rgba(4,0,10,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 20px; }
+.quiz-eye { font-size: 52px; animation: pulseEye 1.2s ease-in-out infinite; }
+@keyframes pulseEye { 0%,100% { transform: scale(1) } 50% { transform: scale(1.25) } }
+.quiz-voice { color: var(--muted); font-size: 14px; }
+.quiz-question { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 0 18px var(--blood); }
+.quiz-answers { display: flex; gap: 14px; }
+.quiz-btn { font-family: 'Vazirmatn'; font-weight: 800; font-size: 16px; padding: 12px 26px; border-radius: 24px; border: 2px solid var(--blood); background: #1a0510; color: #fff; cursor: pointer; min-width: 150px; }
+.quiz-btn:hover { background: var(--blood); }
 
-.text-input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  color: var(--light);
-  font-family: inherit;
-  font-size: 16px;
-  margin-bottom: 12px;
-  transition: border-color 0.25s;
-}
+/* ===== پایان ===== */
+#end-screen { background: radial-gradient(900px 600px at 50% 30%, #1c0520 0%, #050308 75%); }
 
-.text-input:focus {
-  outline: none;
-  border-color: var(--secondary);
-  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
-}
+/* ===== Toast ===== */
+.toast { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); background: rgba(20,8,30,.95); border: 1px solid var(--blood); color: #ffd9df; padding: 10px 18px; border-radius: 12px; font-size: 13px; opacity: 0; pointer-events: none; z-index: 9; transition: opacity .25s; }
+.toast.show { opacity: 1; }
 
-.code-input {
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  color: var(--accent) !important;
-}
-
-.code-hint {
-  font-size: 11px;
-  color: #718096;
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.color-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  justify-content: space-between;
-}
-
-.color-input {
-  width: 60px;
-  height: 44px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.btn-primary, .btn-secondary, .btn-ghost {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 14px;
-  font-family: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.25s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #ff6b6b, #e94560);
-  color: white;
-  box-shadow: 0 6px 16px rgba(233, 69, 96, 0.45);
-}
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(233, 69, 96, 0.55); }
-
-.btn-secondary {
-  background: linear-gradient(135deg, #4ecdc4, #2ba19a);
-  color: #0f2a2a;
-  box-shadow: 0 6px 16px rgba(78, 205, 196, 0.4);
-}
-.btn-secondary:hover { transform: translateY(-2px); }
-
-.menu-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
-  color: #cbd5e0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  width: auto;
-  padding: 10px 18px;
-  font-size: 13px;
-}
-.btn-ghost:hover { background: rgba(255, 255, 255, 0.12); }
-
-.connection-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #a0aec0;
-}
-
-.status-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #48bb78;
-  box-shadow: 0 0 8px rgba(72, 187, 120, 0.8);
-  animation: pulse 1.5s infinite;
-}
-.status-dot.offline { background: #f56565; box-shadow: 0 0 8px rgba(245, 101, 101, 0.8); animation: none; }
-
-.screen-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--light);
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-/* ============================== مودال ============================== */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-
-.modal-content {
-  background: linear-gradient(135deg, #16213e, #1a1a2e);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  padding: 30px;
-  max-width: 560px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.guide-body {
-  text-align: right;
-  line-height: 2;
-  color: #cbd5e0;
-  margin-bottom: 16px;
-}
-
-/* ============================== صفحه بازی ============================== */
-#game-screen {
-  position: fixed;
-  inset: 0;
-  background: #0a0a0a;
-  z-index: 50;
-}
-
-#game-canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  touch-action: none;
-}
-
-/* HUD بالا */
-#hud-top {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  z-index: 60;
-  pointer-events: none;
-}
-
-.hud-box {
-  pointer-events: auto;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 8px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.hud-label { color: #94a3b8; font-size: 12px; }
-.hud-code {
-  font-family: 'Courier New', monospace;
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--accent);
-  letter-spacing: 3px;
-}
-
-.copy-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: white;
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.2s;
-}
-.copy-btn:hover { background: rgba(255, 255, 255, 0.18); }
-
-/* فهرست بازیکنان */
-#hud-players { display: none; } /* اختیاری - در آینده فعال می‌شود */
-
-.players-list {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  max-width: 400px;
-}
-
-.player-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-}
-
-.player-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-/* چت */
-#chat-panel {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  width: 320px;
-  max-height: 40vh;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-#chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 28vh;
-  min-height: 120px;
-}
-
-.chat-message {
-  font-size: 12px;
-  line-height: 1.5;
-  border-radius: 10px;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.chat-message strong { color: var(--accent); }
-
-.chat-system { color: #a0aec0; font-style: italic; }
-
-#chat-input-row {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-}
-
-#chat-input {
-  flex: 1;
-  border: none;
-  border-radius: 10px;
-  padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--light);
-  font-family: inherit;
-  font-size: 13px;
-}
-#chat-input:focus { outline: 2px solid var(--secondary); }
-
-#btn-send-chat {
-  background: var(--secondary);
-  color: #0f2a2a;
-  border: none;
-  border-radius: 10px;
-  padding: 0 16px;
-  font-family: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* کنترل لمسی */
-#touch-controls {
-  position: fixed;
-  bottom: 30px;
-  left: 30px;
-  z-index: 60;
-  display: none;
-}
-
-#joystick-base {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.05);
-  position: relative;
-}
-
-#joystick-knob {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* دکمه خروج */
-.btn-game-exit {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
-  z-index: 70;
-  background: rgba(245, 101, 101, 0.9);
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
-  transition: transform 0.15s;
-}
-.btn-game-exit:hover { transform: scale(1.05); }
-
-/* تنظیمات */
-.toggle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-}
-
-.toggle-row input[type="checkbox"] {
-  width: 48px;
-  height: 26px;
-  appearance: none;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 13px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.25s;
-}
-.toggle-row input[type="checkbox"]::after {
-  content: '';
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: white;
-  top: 2px;
-  right: 2px;
-  transition: right 0.25s;
-}
-.toggle-row input[type="checkbox"]:checked {
-  background: var(--secondary);
-}
-.toggle-row input[type="checkbox"]:checked::after { right: 24px; }
-
-/* خطا */
-.error-text {
-  color: #fc8181;
-  font-size: 13px;
-  margin-top: 10px;
-  min-height: 20px;
-  text-align: center;
-}
-
-/* انیمیشن‌ها */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* موبایل */
-@media (max-width: 768px) {
-  #touch-controls { display: block; }
-  #chat-panel { width: 260px; right: 8px; bottom: 8px; }
-  #chat-messages { min-height: 80px; }
-  .game-title { font-size: 28px; }
-  .game-logo { font-size: 56px; }
-  #hud-top { padding: 6px 10px; }
-  .hud-code { font-size: 16px; }
-}
-
-@media (min-width: 769px) {
-  #touch-controls { display: none; }
+@media (max-width: 700px) {
+  .title { font-size: 28px; }
+  .logo-shadow { font-size: 48px; }
+  .story { font-size: 12px; }
+  .hud-code { display: none; }
+  .chat-panel { width: 56vw; }
+  .chat-messages { max-height: 90px; }
 }
