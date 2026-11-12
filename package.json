@@ -1,13 +1,14 @@
 {
-  "name": "online-arena-game",
-  "version": "1.0.0",
-  "description": "بازی آنلاین دوبعدی چندنفره با Node.js و Socket.IO",
+  "name": "shadow-of-the-laughing-multiplayer",
+  "version": "2.0.0",
+  "description": "بازی «سایهٔ خندان» آنلاین چندنفره (انفرادی، دو نفره و سه نفره) با Node.js و Socket.IO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node test-horror.js"
   },
-  "author": "Online Arena Team",
+  "author": "Mahya",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",

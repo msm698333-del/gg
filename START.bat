@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 
-title Multiplayer Arena Game - Server
+title Shadow of the Laughing - Game Server
 cd /d "%~dp0"
 
 echo ============================================
-echo   Online Multiplayer Arena Game - Launcher
+echo   Shadow of the Laughing - Multiplayer Server
 echo ============================================
 echo.
 

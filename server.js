@@ -1,3 +1,9 @@
+// ============================================================
+//  سایهٔ خندان - سرور بازی آنلاین چندنفره
+//  Express + Socket.IO | ساخت اتاق با کد ۶ رقمی | حالت‌های اجرا:
+//  'solo' (فردین در برابر فرزاد AI) | 'duo' (فردین در برابر فرزاد - دو نفره)
+//  | 'trio' (فردین + دیان در برابر فرزاد - سه نفره)
+// ============================================================
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,26 +18,32 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST']
   },
-  pingTimeout: 15000,
-  pingInterval: 5000
+  pingTimeout: 20000,
+  pingInterval: 8000
 });
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================== GAME CONSTANTS ==============================
-const ARENA_WIDTH = 4000;
-const ARENA_HEIGHT = 4000;
-const MAX_PLAYERS_PER_ROOM = 12;
 const CODE_LENGTH = 6;
-const MAX_MOVE_PER_TICK = 10;      // حداکثر فاصله مجاز حرکت در هر پیام (جلوگیری از سرعت غیرواقعی)
 const CHAT_MESSAGE_MAX_LENGTH = 200;
-const ROOM_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours lifetime for a room
+const ROOM_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const MAX_MOVE_PER_MSG = 14;            // حداکثر فاصله مجاز حرکت در هر پیام
+const PLAYER_SPEED = 120;
+const CATCH_DIST = 26;                  // فاصله‌ای که فرزاد بازیکن را می‌گیرد
 
-const PLAYER_COLORS = [
-  '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#d63031',
-  '#6c5ce7', '#fdcb6e', '#00b894', '#e17055', '#74b9ff', '#a29bfe'
-];
+const MODE_CONFIG = {
+  solo: { name: 'انفرادی (فرزاد هوش مصنوعی)', maxPlayers: 1, slots: ['fardeen'] },
+  duo:  { name: 'دو نفره (فردین در مقابل فرزاد)', maxPlayers: 2, slots: ['fardeen', 'farzad'] },
+  trio: { name: 'سه نفره (فردین + دیان در مقابل فرزاد)', maxPlayers: 3, slots: ['fardeen', 'dian', 'farzad'] }
+};
+
+const ROLE_INFO = {
+  fardeen: { name: 'فردین', color: '#2d7dd2', team: 'fugitive' },
+  dian:    { name: 'دیان',  color: '#ff4fa3', team: 'fugitive' },
+  farzad:  { name: 'فرزاد', color: '#050008', team: 'hunter' }
+};
 
 // ============================== ROOM MANAGEMENT ==============================
 const rooms = new Map(); // roomCode -> room object
@@ -49,13 +61,21 @@ function generateRoomCode() {
   return code;
 }
 
-function createRoom() {
+function createRoom(mode) {
+  const cfg = MODE_CONFIG[mode] || MODE_CONFIG.duo;
   const room = {
     code: generateRoomCode(),
+    mode,
+    maxPlayers: cfg.maxPlayers,
     players: new Map(), // socketId -> playerData
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    state: 'waiting',   // waiting | playing
+    state: 'waiting',   // waiting | starting | playing | ended
+    seed: Math.floor(Math.random() * 0xffffffff),
+    keys: [],           // موقعیت کلیدها (از سرور است تا همه یکسان ببینند)
+    gotCount: 0,
+    doorPos: null,
+    exitReady: false,
     hostId: null
   };
   rooms.set(room.code, room);
@@ -67,6 +87,15 @@ function getRoomByCode(code) {
   return rooms.get(code.toUpperCase()) || null;
 }
 
+function freeSlot(room) {
+  const used = new Set(Array.from(room.players.values()).map(p => p.role));
+  const cfg = MODE_CONFIG[room.mode] || MODE_CONFIG.duo;
+  for (const slot of cfg.slots) {
+    if (!used.has(slot)) return slot;
+  }
+  return null;
+}
+
 function removePlayerFromRoom(room, socketId) {
   if (!room) return null;
   const player = room.players.get(socketId);
@@ -76,7 +105,7 @@ function removePlayerFromRoom(room, socketId) {
     rooms.delete(room.code);
     return player;
   }
-  // انتقال میزبانی به بازیکن بعدی
+  // انتقال میزبانی به بازیکن بعدی (در حالت دو/سه نفره)
   if (room.hostId === socketId) {
     room.hostId = room.players.keys().next().value;
   }
@@ -93,16 +122,34 @@ function isValidHexColor(color) {
   return typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color);
 }
 
+function isValidMode(mode) {
+  return typeof mode === 'string' && Object.prototype.hasOwnProperty.call(MODE_CONFIG, mode);
+}
+
 function roomPlayerList(room) {
   return Array.from(room.players.values()).map(p => ({
     id: p.id,
     username: p.username,
     color: p.color,
+    role: p.role,
+    roleName: ROLE_INFO[p.role] ? ROLE_INFO[p.role].name : p.role,
     x: p.x,
     y: p.y,
     angle: p.angle,
     isHost: p.id === room.hostId
   }));
+}
+
+function roomSummary(room) {
+  return {
+    roomCode: room.code,
+    mode: room.mode,
+    modeName: (MODE_CONFIG[room.mode] || MODE_CONFIG.duo).name,
+    seed: room.seed,
+    state: room.state,
+    players: roomPlayerList(room),
+    hostId: room.hostId
+  };
 }
 
 // ============================== SOCKET HANDLING ==============================
@@ -115,42 +162,35 @@ io.on('connection', (socket) => {
       if (!payload || typeof payload !== 'object') {
         return callback && callback({ success: false, error: 'داده‌های نامعتبر است' });
       }
+      const mode = isValidMode(payload.mode) ? payload.mode : 'duo';
 
-      const room = createRoom();
+      const room = createRoom(mode);
+      const role = freeSlot(room);
+      if (!role) {
+        rooms.delete(room.code);
+        return callback && callback({ success: false, error: 'خطا در تخصیص نقش' });
+      }
       const playerData = {
         id: socket.id,
         username: sanitizeUsername(payload.username),
-        color: isValidHexColor(payload.color) ? payload.color : PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)],
-        x: ARENA_WIDTH / 2 + (Math.random() - 0.5) * 600,
-        y: ARENA_HEIGHT / 2 + (Math.random() - 0.5) * 600,
+        color: ROLE_INFO[role].color,
+        role,
+        x: null,
+        y: null,
         angle: 0,
-        health: 100,
-        score: 0,
+        flashlight: true,
         connectedAt: Date.now(),
         lastActive: Date.now()
       };
 
       room.players.set(socket.id, playerData);
       room.hostId = socket.id;
-      rooms.set(room.code, room);
-
       socket.join(room.code);
       socket.data.roomCode = room.code;
 
-      socket.emit('room_created', {
-        success: true,
-        roomCode: room.code,
-        player: playerData,
-        players: roomPlayerList(room),
-        hostId: room.hostId
-      });
+      socket.emit('room_created', { success: true, ...roomSummary(room) });
 
-      io.to(room.code).emit('player_list', {
-        players: roomPlayerList(room),
-        hostId: room.hostId
-      });
-
-      console.log(`🏠 اتاق جدید ساخته شد: ${room.code} توسط ${playerData.username}`);
+      console.log(`🏠 اتاق سایهٔ خندان ساخته شد: ${room.code} حالت ${mode} توسط ${playerData.username}`);
       callback && callback({ success: true, roomCode: room.code });
     } catch (error) {
       console.error('❌ خطا در create_room:', error);
@@ -175,19 +215,24 @@ io.on('connection', (socket) => {
         return callback && callback({ success: false, error: 'اتاقی با این کد یافت نشد' });
       }
 
-      if (room.players.size >= MAX_PLAYERS_PER_ROOM) {
-        return callback && callback({ success: false, error: 'اتاق پر است (حداکثر ۱۲ نفر)' });
+      if (room.state !== 'waiting') {
+        return callback && callback({ success: false, error: 'بازی قبلاً شروع شده است' });
       }
 
+      if (room.players.size >= room.maxPlayers) {
+        return callback && callback({ success: false, error: 'اتاق پر است' });
+      }
+
+      const role = freeSlot(room);
       const playerData = {
         id: socket.id,
         username: sanitizeUsername(payload.username),
-        color: isValidHexColor(payload.color) ? payload.color : PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)],
-        x: ARENA_WIDTH / 2 + (Math.random() - 0.5) * 600,
-        y: ARENA_HEIGHT / 2 + (Math.random() - 0.5) * 600,
+        color: ROLE_INFO[role].color,
+        role,
+        x: null,
+        y: null,
         angle: 0,
-        health: 100,
-        score: 0,
+        flashlight: true,
         connectedAt: Date.now(),
         lastActive: Date.now()
       };
@@ -197,24 +242,16 @@ io.on('connection', (socket) => {
       socket.join(room.code);
       socket.data.roomCode = room.code;
 
-      socket.emit('room_joined', {
-        success: true,
-        roomCode: room.code,
-        player: playerData,
-        players: roomPlayerList(room),
-        hostId: room.hostId,
-        gameState: room.state
-      });
+      socket.emit('room_joined', { success: true, ...roomSummary(room) });
 
-      // به همه بازیکنان اعلام کن که بازیکن جدید آمده
+      // به همه اعلام کن که بازیکن جدید آمده
       socket.broadcast.to(room.code).emit('player_joined', {
         player: {
           id: playerData.id,
           username: playerData.username,
           color: playerData.color,
-          x: playerData.x,
-          y: playerData.y,
-          angle: playerData.angle,
+          role: playerData.role,
+          roleName: ROLE_INFO[role].name,
           isHost: false
         },
         roomCode: room.code
@@ -222,10 +259,11 @@ io.on('connection', (socket) => {
 
       io.to(room.code).emit('player_list', {
         players: roomPlayerList(room),
-        hostId: room.hostId
+        hostId: room.hostId,
+        state: room.state
       });
 
-      console.log(`👤 ${playerData.username} به اتاق ${room.code} پیوست (${room.players.size} نفر)`);
+      console.log(`👤 ${playerData.username} (${ROLE_INFO[role].name}) به اتاق ${room.code} پیوست (${room.players.size}/${room.maxPlayers})`);
       callback && callback({ success: true, roomCode: room.code });
     } catch (error) {
       console.error('❌ خطا در join_room:', error);
@@ -233,7 +271,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ---------- شروع بازی ----------
+  // ---------- شروع بازی (فقط میزبان) ----------
   socket.on('start_game', (payload, callback) => {
     try {
       const room = getRoomByCode(socket.data.roomCode);
@@ -241,42 +279,44 @@ io.on('connection', (socket) => {
       if (room.hostId !== socket.id) {
         return callback && callback({ success: false, error: 'فقط میزبان می‌تواند بازی را شروع کند' });
       }
+      if (room.players.size < room.maxPlayers) {
+        return callback && callback({ success: false, error: `منتظر ${room.maxPlayers - room.players.size} نفر دیگر باشید` });
+      }
       room.state = 'playing';
       room.updatedAt = Date.now();
-      io.to(room.code).emit('game_started', { roomCode: room.code });
+      // موقعیت اولیه: هر دو فراری‌دهنده کنار هم، فرزاد دورتر از آن‌ها
+      io.to(room.code).emit('game_started', roomSummary(room));
       callback && callback({ success: true });
     } catch (error) {
       callback && callback({ success: false, error: 'خطا در شروع بازی' });
     }
   });
 
-  // ---------- حرکت بازیکن ----------
+  // ---------- حرکت ----------
   socket.on('player_move', (payload) => {
     const room = getRoomByCode(socket.data.roomCode);
-    if (!room) return;
+    if (!room || room.state !== 'playing') return;
     const player = room.players.get(socket.id);
-    if (!player) return;
-    if (!payload || typeof payload !== 'object') return;
+    if (!player || !payload || typeof payload !== 'object') return;
 
     let x = Number(payload.x);
     let y = Number(payload.y);
     let angle = Number(payload.angle);
-
     if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(angle)) return;
 
-    // جلوگیری از دستکاری موقعیت: محدود کردن فاصله حرکت
-    const dx = x - player.x;
-    const dy = y - player.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > MAX_MOVE_PER_TICK) {
-      const ratio = MAX_MOVE_PER_TICK / dist;
-      x = player.x + dx * ratio;
-      y = player.y + dy * ratio;
+    if (player.x !== null) {
+      const dx = x - player.x;
+      const dy = y - player.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > MAX_MOVE_PER_MSG) {
+        const ratio = MAX_MOVE_PER_MSG / dist;
+        x = player.x + dx * ratio;
+        y = player.y + dy * ratio;
+      }
     }
 
-    // محدود کردن به مرزهای نقشه
-    x = Math.max(20, Math.min(ARENA_WIDTH - 20, x));
-    y = Math.max(20, Math.min(ARENA_HEIGHT - 20, y));
+    x = Math.max(0, Math.min(1140, x));
+    y = Math.max(0, Math.min(1140, y));
     angle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
     player.x = x;
@@ -285,13 +325,102 @@ io.on('connection', (socket) => {
     player.lastActive = Date.now();
     room.updatedAt = Date.now();
 
-    // ارسال موقعیت به بقیه بازیکنان اتاق
+    // بررسی گرفتن فراری‌دهنده‌ها توسط فرزاد (فقط وقتی فرزاد آنلاین است)
+    const farzad = Array.from(room.players.values()).find(p => p.role === 'farzad');
+    if (room.state === 'playing') {
+      if (player.role === 'farzad') {
+        for (const target of room.players.values()) {
+          if (target.role === 'farzad') continue;
+          if (target.x === null) continue;
+          if (Math.hypot(target.x - player.x, target.y - player.y) < CATCH_DIST) {
+            return endGame(room, 'farzad', `${target.username} گرفتار شد! فرزاد برنده است!`);
+          }
+        }
+      } else if (farzad && farzad.x !== null && farzad.y !== null) {
+        if (Math.hypot(player.x - farzad.x, player.y - farzad.y) < CATCH_DIST) {
+          return endGame(room, 'farzad', `${player.username} گرفتار شد! فرزاد برنده است!`);
+        }
+      }
+    }
+
     socket.broadcast.to(room.code).emit('player_moved', {
       id: socket.id,
+      role: player.role,
       x: player.x,
       y: player.y,
       angle: player.angle
     });
+  });
+
+  // ---------- کلید جمع‌آوری شد (بعد از جواب درست) ----------
+  socket.on('key_collected', (payload, callback) => {
+    const room = getRoomByCode(socket.data.roomCode);
+    if (!room || room.state !== 'playing') return;
+    if (!payload || typeof payload.keyIndex !== 'number') return;
+    const keyIndex = payload.keyIndex;
+    const player = room.players.get(socket.id);
+    if (!player) return;
+
+    // شمارش روی سرور انجام می‌شود
+    room.gotCount = Math.min(4, room.gotCount + 1);
+    room.updatedAt = Date.now();
+    io.to(room.code).emit('key_collected', {
+      keyIndex,
+      gotCount: room.gotCount,
+      playerId: socket.id,
+      exitReady: room.gotCount >= 4
+    });
+    if (callback) callback({ success: true, gotCount: room.gotCount });
+  });
+
+  // ---------- جواب غلط → فرزاد خشمگین می‌شود ----------
+  socket.on('quiz_wrong', () => {
+    const room = getRoomByCode(socket.data.roomCode);
+    if (!room || room.state !== 'playing') return;
+    room.updatedAt = Date.now();
+    io.to(room.code).emit('farzad_enraged', { playerId: socket.id });
+  });
+
+  // ---------- فلش دیان (stun فرزاد) ----------
+  socket.on('flash_burst', (payload, callback) => {
+    const room = getRoomByCode(socket.data.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const player = room.players.get(socket.id);
+    if (!player) return;
+    if (player.role !== 'dian') {
+      return callback && callback({ success: false, error: 'فقط دیان می‌تواند فلش بزند' });
+    }
+    // کلاینت فاصله و cooldown را بررسی می‌کند؛ سرور هم cooldown می‌گذارد
+    const now = Date.now();
+    if (player.lastFlash && now - player.lastFlash < 15000) {
+      return callback && callback({ success: false, error: 'فلش هنوز آماده نیست (۱۵ ثانیه)' });
+    }
+    player.lastFlash = now;
+    io.to(room.code).emit('farzad_stunned', { playerId: socket.id });
+    callback && callback({ success: true });
+  });
+
+  // ---------- فلش فردین هم‌اعلام می‌شود تا پروژکتور درست کار کند ----------
+  socket.on('flashlight_toggle', (payload) => {
+    const room = getRoomByCode(socket.data.roomCode);
+    if (!room || room.state !== 'playing') return;
+    const player = room.players.get(socket.id);
+    if (!player) return;
+    player.flashlight = !!payload.on;
+    socket.broadcast.to(room.code).emit('flashlight_toggle', {
+      id: socket.id,
+      role: player.role,
+      on: player.flashlight
+    });
+  });
+
+  // ---------- رسیدن به در → پیروزی فراری‌دهنده‌ها ----------
+  socket.on('reached_exit', () => {
+    const room = getRoomByCode(socket.data.roomCode);
+    if (!room || room.state !== 'playing') return;
+    if (room.gotCount >= 4) {
+      endGame(room, 'fugitives', 'فرار کردید! 🎉');
+    }
   });
 
   // ---------- چت ----------
@@ -307,8 +436,9 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('chat_message', {
       playerId: socket.id,
       username: player.username,
-      color: player.color,
-      message: message,
+      role: player.role,
+      roleName: ROLE_INFO[player.role].name,
+      message,
       timestamp: Date.now()
     });
   });
@@ -330,6 +460,7 @@ io.on('connection', (socket) => {
     const room = getRoomByCode(roomCode);
     if (!room) return;
 
+    const wasPlaying = room.state === 'playing';
     const player = removePlayerFromRoom(room, sock.id);
     sock.leave(roomCode);
     sock.data.roomCode = null;
@@ -338,46 +469,52 @@ io.on('connection', (socket) => {
       console.log(`🚪 ${player.username} از اتاق ${roomCode} خارج شد (${reason})`);
     }
 
-    if (room.players.size > 0) {
+    if (wasPlaying && room.players.size > 0) {
+      // اگر وسط بازی کسی رفت، بازی تمام می‌شود
+      endGame(room, null, 'یکی از بازیکن‌ها وسط بازی قطع شد.');
+    } else if (room.players.size > 0) {
       io.to(roomCode).emit('player_left', { playerId: sock.id, roomCode, reason });
       io.to(roomCode).emit('player_list', {
         players: roomPlayerList(room),
-        hostId: room.hostId
+        hostId: room.hostId,
+        state: room.state
       });
     }
   }
 });
 
+// ---------- پایان بازی ----------
+function endGame(room, winner, message) {
+  if (room.state !== 'playing' && room.state !== 'waiting' && room.state !== 'starting') return;
+  room.state = 'ended';
+  room.updatedAt = Date.now();
+  io.to(room.code).emit('game_over', {
+    winner, // 'farzad' | 'fugitives' | null
+    message: message || (winner === 'fugitives' ? 'فرار کردید! 🎉' : winner === 'farzad' ? 'فرزاد گرفت! 😈' : 'بازی تمام شد.'),
+    gotCount: room.gotCount
+  });
+}
+
 // ============================== HTTP API ==============================
 app.get('/health', (req, res) => {
-  res.json({ ok: true, rooms: rooms.size, players: Array.from(rooms.values()).reduce((sum, r) => sum + r.players.size, 0) });
+  res.json({
+    ok: true,
+    rooms: rooms.size,
+    players: Array.from(rooms.values()).reduce((sum, r) => sum + r.players.size, 0)
+  });
 });
 
 // ============================== HTTP SERVER ==============================
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0'; // گوش دادن روی همه رابط‌ها تا از بیرون هم در دسترس باشد
+const HOST = process.env.HOST || '0.0.0.0';
 
 server.listen(PORT, HOST, () => {
   console.log('========================================');
-  console.log(`🚀 سرور بازی در حال اجرا است`);
+  console.log(`🚀 سایهٔ خندان سرور اجرا شد`);
   console.log(`🌐 آدرس محلی: http://localhost:${PORT}`);
-  console.log(`🌐 آدرس شبکه:  http://${getLocalIP()}:${PORT}`);
-  console.log(`🎮 حداکثر بازیکنان هر اتاق: ${MAX_PLAYERS_PER_ROOM}`);
+  console.log(`🎮 حالت‌ها: انفرادی | دو نفره | سه نفره`);
   console.log('========================================');
 });
-
-function getLocalIP() {
-  const os = require('os');
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return 'YOUR_LOCAL_IP';
-}
 
 // پاکسازی اتاق‌های قدیمی هر ۵ دقیقه
 setInterval(() => {
@@ -390,7 +527,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// بستن آرام سرور
 process.on('SIGINT', () => {
   console.log('\n🛑 در حال بستن سرور...');
   server.close(() => process.exit(0));
