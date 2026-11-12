@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>نقشه مهاجران - بازی آنلاین دوبعدی</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ====================== صفحه اصلی (منو) ====================== -->
+  <div id="menu-screen">
+    <div class="menu-container">
+      <div class="logo-area">
+        <div class="game-logo">🗺️</div>
+        <h1 class="game-title">نقشه‌ی مهاجران</h1>
+        <p class="game-subtitle">بازی آنلاین دوبعدی با WebSocket</p>
+      </div>
+
+      <div class="menu-card">
+        <div class="mode-tabs">
+          <button class="tab-btn active" data-mode="create">ساخت اتاق</button>
+          <button class="tab-btn" data-mode="join">ورود با کد</button>
+        </div>
+
+        <div class="mode-panel active" id="panel-create">
+          <label class="field-label">نام بازیکن شما</label>
+          <input type="text" id="create-username" class="text-input" placeholder="مثلاً علی یا Ali" maxlength="16" dir="ltr">
+          <div class="color-row">
+            <span class="field-label">رنگ شخصیت:</span>
+            <input type="color" id="create-color" value="#ff6b6b" class="color-input">
+          </div>
+          <button id="btn-create-room" class="btn-primary">🚀 ساخت لابی خصوصی</button>
+        </div>
+
+        <div class="mode-panel" id="panel-join">
+          <label class="field-label">کد لابی ۶ کاراکتری</label>
+          <input type="text" id="join-code" class="text-input code-input" placeholder="ABC123" maxlength="6" dir="ltr" style="text-transform: uppercase; font-size: 28px; letter-spacing: 8px; text-align: center;">
+          <div class="code-hint">کد را از میزبان بگیرید</div>
+          <input type="text" id="join-username" class="text-input" placeholder="مثلاً مریم یا Maryam" maxlength="16" dir="ltr">
+          <div class="color-row">
+            <span class="field-label">رنگ شخصیت:</span>
+            <input type="color" id="join-color" value="#4ecdc4" class="color-input">
+          </div>
+          <button id="btn-join-room" class="btn-secondary">🎯 ورود به اتاق</button>
+          <div id="join-error" class="error-text"></div>
+        </div>
+      </div>
+
+      <div class="menu-actions">
+        <button id="btn-guide" class="btn-ghost">📖 راهنمای بازی</button>
+        <button id="btn-settings" class="btn-ghost">⚙️ تنظیمات</button>
+        <button id="btn-exit" class="btn-ghost">🚪 خروج</button>
+      </div>
+
+      <div class="connection-status" id="menu-connection-status">
+        <span class="status-dot" id="menu-status-dot"></span>
+        <span id="menu-status-text">در حال اتصال...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== صفحه تنظیمات ====================== -->
+  <div id="settings-screen" class="hidden">
+    <div class="menu-container">
+      <h2 class="screen-title">⚙️ تنظیمات</h2>
+      <div class="menu-card">
+        <label class="toggle-row">
+          <span>🔊 فعال‌سازی صدا</span>
+          <input type="checkbox" id="setting-sound" checked>
+        </label>
+        <label class="toggle-row">
+          <span>🏷️ نمایش نام بازیکنان</span>
+          <input type="checkbox" id="setting-names" checked>
+        </label>
+        <label class="toggle-row">
+          <span>🧭 نمایش شبکه نقشه</span>
+          <input type="checkbox" id="setting-grid" checked>
+        </label>
+        <div class="menu-actions">
+          <button id="btn-settings-back" class="btn-primary">بازگشت</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== مودال راهنما ====================== -->
+  <div id="guide-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2 class="screen-title">📖 راهنمای بازی نقشه‌ی مهاجران</h2>
+      <div class="guide-body">
+        <p>🕹 <b>حرکت:</b> کلیدهای <b>WASD</b> یا <b>فلش‌های جهت‌نما</b> روی کیبورد و انگشت روی گوشی.</p>
+        <p>🗺 <b>اتاق خصوصی:</b> ساخت اتاق یک کد ۶ کاراکتری تولید می‌کند که فقط با آن می‌توان وارد شد.</p>
+        <p>👥 <b>بازیکنان:</b> حداکثر ۱۲ بازیکن در یک اتاق.</p>
+        <p>💬 <b>چت:</b> از چت برای پیام‌های متنی استفاده کنید.</p>
+        <p>🏃 <b>حرکت:</b> همگام‌سازی حرکت‌ها از طریق سرور انجام می‌شود.</p>
+        <p>🌍 <b>اینترنت:</b> برای اتصال واقعی بازیکنان شهرهای مختلف، بازی را روی هاست Node.js منتشر کنید.</p>
+      </div>
+      <button id="btn-guide-close" class="btn-primary">متوجه شدم</button>
+    </div>
+  </div>
+
+  <!-- ====================== صفحه بازی ====================== -->
+  <div id="game-screen" class="hidden">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- نوار بالا HUD -->
+    <div id="hud-top">
+      <div class="hud-box room-info">
+        <span class="hud-label">اتاق:</span>
+        <span id="hud-room-code" class="hud-code">------</span>
+        <button id="btn-copy-code" class="copy-btn" title="کپی کد">📋</button>
+      </div>
+      <div class="hud-box connection-info">
+        <span class="status-dot" id="hud-status-dot"></span>
+        <span id="hud-status-text">متصل</span>
+      </div>
+    </div>
+
+    <!-- نوار بازیکنان -->
+    <div id="hud-players">
+      <div class="hud-box players-box" id="players-box">
+        <span class="hud-label">بازیکنان:</span>
+        <div id="players-list" class="players-list"></div>
+      </div>
+    </div>
+
+    <!-- چت -->
+    <div id="chat-panel">
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input type="text" id="chat-input" placeholder="پیام خود را بنویسید..." maxlength="200" dir="rtl">
+        <button id="btn-send-chat">ارسال</button>
+      </div>
+    </div>
+
+    <!-- کنترل لمسی -->
+    <div id="touch-controls">
+      <div id="joystick-zone">
+        <div id="joystick-base">
+          <div id="joystick-knob"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- دکمه خروج -->
+    <button id="btn-game-exit" class="btn-game-exit">🚪 خروج</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/socket-client.js"></script>
+  <script src="/game.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
