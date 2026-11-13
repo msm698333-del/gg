@@ -1435,6 +1435,24 @@ function buildWorld(){
   link(0,10);link(10,11);link(11,12);link(12,13);link(13,14);link(14,15);link(13,25);link(25,15);
   link(15,16);link(16,17);link(17,18);link(18,19);link(19,20);link(2,21);link(21,22);
   link(4,23);link(23,24);link(12,25);
+
+  /* ---------- کوچک‌سازی نقشه به اندازه‌ی «امانگ‌گاس» ---------- */
+  const SCALE = 0.27;
+  const sO = (o, keys) => { for (const k of keys) if (o && typeof o[k] === 'number') o[k] *= SCALE; };
+  for (const a of WORLD.areas) sO(a, ['x','y','w','h']);
+  for (const w of WORLD.walls) sO(w, ['x','y','w','h']);
+  for (const d of WORLD.doors) sO(d, ['x','y','w','h']);
+  for (const p of WORLD.props) sO(p, ['x','y','cR']);
+  for (const l of WORLD.lights) sO(l, ['x','y','r']);
+  for (const dcl of WORLD.decals) sO(dcl, ['x','y','r']);
+  for (const s of WORLD.stations) sO(s, ['x','y']);
+  for (const c of WORLD.clueCands) sO(c, ['x','y']);
+  for (const c of WORLD.pieceCands) sO(c, ['x','y']);
+  for (const c of WORLD.treasureCands) sO(c, ['x','y']);
+  if (WORLD.podium) sO(WORLD.podium, ['x','y','r']);
+  for (const n of WORLD.nav.nodes) sO(n, ['x','y']);
+  CONFIG.WORLD_W = Math.round(CONFIG.WORLD_W * SCALE);
+  CONFIG.WORLD_H = Math.round(CONFIG.WORLD_H * SCALE);
 }
 
 /* نزدیک‌ترین نود و مسیر BFS */
@@ -1558,7 +1576,7 @@ function buildMiniStatic(){
    رندرر — Canvas 2D، نورپردازی، آب‌وهوا، ذرات، دوربین، مینی‌مپ
    ======================================================================== */
 let cvs, ctx, DPR = 1, VW = 0, VH = 0, lightCv, lctx, LSCALE = 0.5;
-const CAM = { x:2100, y:1500, tx:2100, ty:1500, shake:0 };
+const CAM = { x: (WORLD.podium?WORLD.podium.x:600), y: (WORLD.podium?WORLD.podium.y:400), tx: (WORLD.podium?WORLD.podium.x:600), ty: (WORLD.podium?WORLD.podium.y:400), shake:0 };
 const QUAL = { rainN:160, fogN:6, dustN:60, lightScale:0.55, dpr:2, shadow:true, simpleLights:false };
 
 function initRenderer(){
@@ -1596,7 +1614,7 @@ const STRIPS = [
   { x:2688, y:1280, w:64, h:160, f:'cobble' },
   { x:3760, y:1248, w:144, h:160, f:'wood' },
   { x:2176, y:2208, w:144, h:160, f:'tunnel' },
-];
+].map(s => ({ ...s, x: s.x * 0.27, y: s.y * 0.27, w: s.w * 0.27, h: s.h * 0.27 }));
 
 function render(t, dt){
   if (!ctx) return;
@@ -2212,8 +2230,9 @@ GAME.ghost = false;
 
 function makePlayer(id, name, charId, isBot){
   const ch = CHARACTERS[charId] || CHARACTERS.fardin;
+  const cP = (WORLD && WORLD.podium) ? WORLD.podium : { x: CONFIG.WORLD_W/2, y: CONFIG.WORLD_H/2 };
   return { id, name, charId, isBot:!!isBot, color:ch.color,
-    x:2128, y:1560, r:CONFIG.PLAYER_R, dir:Math.PI/2, anim:'idle', phase:0, animT:0,
+    x:cP.x, y:cP.y, r:CONFIG.PLAYER_R, dir:Math.PI/2, anim:'idle', phase:0, animT:0,
     hp:100, stam:CONFIG.STAM_MAX*ch.stam, stamMax:CONFIG.STAM_MAX*ch.stam,
     alive:true, ghost:false, gone:false, form:null, formT:0, hitT:0, taskT:0, taskStation:null,
     dashUntil:0, ready:false, host:false, posTargets:null,
@@ -2224,7 +2243,7 @@ function makePlayer(id, name, charId, isBot){
 function initAmbientParticles(){
   const R = Math.random;
   GAME.rainP.length = 0;
-  for (let i=0;i<170;i++) GAME.rainP.push({ x:R()*1700, y:R()*1700 });
+  for (let i=0;i<170;i++) GAME.rainP.push({ x:R()*CONFIG.WORLD_W, y:R()*CONFIG.WORLD_H });
   GAME.fogP.length = 0;
   for (let i=0;i<7;i++) GAME.fogP.push({ x:R()*CONFIG.WORLD_W, y:R()*CONFIG.WORLD_H,
     vx:(R()*12-4), vy:(R()*8-3), r:220+R()*320, a:0.05+R()*0.05 });
@@ -3204,7 +3223,8 @@ function extendInteractables(t){
     GAME.focusExtra = { kind:'lock', x:d.x+d.w/2, y:d.y+d.h/2+40, r:60, ref:null, label:'قفل صندوق اصلی (کد ۴ رقمی)' };
   } else GAME.focusExtra = null;
   if (q.lockOpen && !q.riddleSolved){
-    GAME.riddleSpot = { kind:'riddle', x:2360, y:2640, r:64, ref:null, label:'معمای نگهبان گنج' };
+    const tAr = WORLD.areas.find(a => a.id === 'treasure');
+    GAME.riddleSpot = { kind:'riddle', x: tAr ? tAr.x + tAr.w/2 : 640, y: tAr ? tAr.y + tAr.h/2 : 713, r:20, ref:null, label:'معمای نگهبان گنج' };
   } else GAME.riddleSpot = null;
 }
 /* ========================================================================
@@ -3374,7 +3394,7 @@ function endMeeting(payload){
   for (const id of ids){
     const p = GAME.players[id]; if (p.gone) continue;
     const a = -Math.PI/2 + i*(TAU/Math.max(4,ids.length));
-    p.x = 2240 + Math.cos(a)*110; p.y = 1440 + Math.sin(a)*110;
+    p.x = WORLD.podium.x + Math.cos(a)*30; p.y = WORLD.podium.y + Math.sin(a)*30;
     if (p.posTargets){ p.posTargets.x = p.x; p.posTargets.y = p.y; }
     i++;
   }
@@ -3689,7 +3709,7 @@ const DS = {
         const cid = free[i % free.length];
         const id = 'bot'+(i+1);
         this.newPlayer(id, CHARACTERS[cid].name, cid, true);
-        this.players[id].x = 2100 + Math.random()*160; this.players[id].y = 1560 + Math.random()*100;
+        this.players[id].x = WORLD.podium.x + (Math.random()-0.5)*60; this.players[id].y = WORLD.podium.y + (Math.random()-0.5)*40;
         pushChat({ sys:true, text:CHARACTERS[cid].name + ' وارد اتاق شد', scope:'lobby' });
         NET.cb.roomState(this.roomState());
         setTimeout(() => { this.players[id].ready = true; NET.cb.roomState(this.roomState()); }, 1500 + Math.random()*4000);
@@ -3732,7 +3752,7 @@ const DS = {
     ids.forEach((id, i) => {
       const p = this.players[id];
       const a = -Math.PI/2 + i*(TAU/ids.length);
-      p.x = 2240 + Math.cos(a)*120; p.y = 1440 + Math.sin(a)*120;
+      p.x = WORLD.podium.x + Math.cos(a)*32; p.y = WORLD.podium.y + Math.sin(a)*32;
       p.role = (id === monId) ? 'monster' : 'seeker';
       if (p.isBot) p.bot = makeBotState(p);
     });
@@ -4230,7 +4250,7 @@ function showScreen(name){
 }
 
 /* ---------------------- منو ---------------------- */
-const MENU_WP = [ {x:900,y:800}, {x:1800,y:1500}, {x:3200,y:700}, {x:2250,y:2450}, {x:700,y:2300} ];
+const MENU_WP = [ {x:900,y:800}, {x:1800,y:1500}, {x:3200,y:700}, {x:2250,y:2450}, {x:700,y:2300} ].map(p => ({ x: p.x * 0.27, y: p.y * 0.27 }));
 let menuWp = 0, menuT = 0;
 function menuCamUpdate(dt){
   menuT += dt;
@@ -4539,7 +4559,7 @@ function restartDemoMatch(){
     p.stam = p.stamMax; p.ready = false; p.taskT = 0;
     p.stats = { tasks:0, clues:0, pieces:0, damage:0, votes:0, dist:0, heals:0 };
     if (p.isBot){
-      p.x = 2100 + Math.random()*160; p.y = 1560 + Math.random()*100;
+      p.x = WORLD.podium.x + (Math.random()-0.5)*60; p.y = WORLD.podium.y + (Math.random()-0.5)*40;
       setTimeout(() => { p.ready = true; NET.cb.roomState(DS.roomState()); }, 1800 + Math.random()*4200);
     }
   }

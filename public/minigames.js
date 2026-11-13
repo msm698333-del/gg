@@ -359,8 +359,18 @@ document.querySelectorAll('[data-back]').forEach(btn => {
   const labelEl = $('td-label');
   const textEl = $('td-text');
   const cardEl = $('td-card');
-  let truthPool = shuffle(TRUTHS.slice());
-  let darePool = shuffle(DARES.slice());
+  const CUSTOM_KEY = 'shadow_td_custom_v1';
+  let customTruth = [];
+  let customDare = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{}');
+    customTruth = Array.isArray(saved.truth) ? saved.truth : [];
+    customDare = Array.isArray(saved.dare) ? saved.dare : [];
+  } catch (e) { /* دادهٔ نامعتبر → شروع تمیز */ }
+  const allTruths = () => TRUTHS.concat(customTruth);
+  const allDares = () => DARES.concat(customDare);
+  let truthPool = shuffle(allTruths());
+  let darePool = shuffle(allDares());
 
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -373,7 +383,7 @@ document.querySelectorAll('[data-back]').forEach(btn => {
   function draw(kind) {
     const isTruth = kind === 'truth';
     let pool = isTruth ? truthPool : darePool;
-    if (pool.length === 0) pool = shuffle((isTruth ? TRUTHS : DARES).slice());
+    if (pool.length === 0) pool = shuffle((isTruth ? allTruths() : allDares()));
     const item = pool.pop();
     if (isTruth) truthPool = pool; else darePool = pool;
     labelEl.textContent = isTruth ? '🗣 حقیقت' : '😈 جرئت';
@@ -382,6 +392,44 @@ document.querySelectorAll('[data-back]').forEach(btn => {
     void cardEl.offsetWidth;
     cardEl.classList.add('flash', isTruth ? 'truth-card' : 'dare-card');
   }
+
+  function saveCustom() {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ truth: customTruth, dare: customDare })); } catch (e) { }
+    updateCustomCount();
+  }
+
+  function updateCustomCount() {
+    const countEl = $('td-custom-count');
+    if (countEl) countEl.textContent = `دلخواه‌های تو: ${customTruth.length} حقیقت · ${customDare.length} جرئت`;
+  }
+
+  function addCustom(kind) {
+    const input = $('td-custom-input');
+    const text = (input && input.value || '').replace(/[<>]/g, '').trim().slice(0, 200);
+    if (text.length < 2) {
+      if (textEl) textEl.textContent = 'سؤال دلخواه باید حداقل ۲ حرف باشد.';
+      return;
+    }
+    if (kind === 'truth') {
+      if (customTruth.length >= 60) customTruth.shift();
+      customTruth.push(text);
+      $('td-custom-input').value = '';
+      saveCustom();
+      truthPool = shuffle(allTruths());
+      $('td-custom-input').focus();
+      textEl.textContent = `«${text}» به حقیقت‌های شما اضافه شد ✅`;
+    } else {
+      if (customDare.length >= 60) customDare.shift();
+      customDare.push(text);
+      $('td-custom-input').value = '';
+      saveCustom();
+      darePool = shuffle(allDares());
+      $('td-custom-input').focus();
+      textEl.textContent = `«${text}» به جرئت‌های شما اضافه شد ✅`;
+    }
+  }
+
+  updateCustomCount();
 
   modeButtons.forEach(btn => btn.addEventListener('click', () => {
     modeButtons.forEach(b => b.classList.remove('active'));
@@ -395,4 +443,358 @@ document.querySelectorAll('[data-back]').forEach(btn => {
   }));
   $('td-truth').addEventListener('click', () => draw('truth'));
   $('td-dare').addEventListener('click', () => draw('dare'));
+  const addTruthBtn = $('td-add-truth');
+  const addDareBtn = $('td-add-dare');
+  if (addTruthBtn) addTruthBtn.addEventListener('click', () => addCustom('truth'));
+  if (addDareBtn) addDareBtn.addEventListener('click', () => addCustom('dare'));
+  const customInput = $('td-custom-input');
+  if (customInput) customInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom('truth'); } });
+})();
+
+// ============================================================
+//  آنلاین — «لابی مینی‌گیم‌ها با کد» (دوز | شطرنج | جرئت یا حقیقت)
+// ============================================================
+(function initMiniOnline() {
+  const byId = (id) => document.getElementById(id);
+  const show = (typeof window.showScreen === 'function')
+    ? window.showScreen
+    : function (name) { document.querySelectorAll('.screen').forEach(el => el.classList.toggle('hide', el.id !== name)); };
+
+  const MG_GAMES = { ttt: 'دوز', chess: 'شطرنج', tod: 'جرئت یا حقیقت' };
+
+  const state = {
+    code: null, isHost: false, myId: null, game: 'ttt', picked: 'ttt', players: [],
+    tttBoard: Array(9).fill(null), tttTurn: 'X', tttWinner: null, tttSeat: null,
+    chess: null, chessColor: null, chessSelected: null, chessGameOver: false,
+    tdHolderId: null, tdIdx: 0
+  };
+
+  const toastEl = byId('toast');
+  function toast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2600);
+  }
+
+  function myName() {
+    const el = byId('mg-username');
+    const v = el ? el.value.trim() : '';
+    return v.length ? v : 'بازیکن';
+  }
+
+  function requireNet() {
+    if (!window.Net) return false;
+    Net.connect();
+    state.myId = Net.socket ? Net.socket.id : null;
+    return true;
+  }
+
+  function setError(msg) {
+    const e = byId('mg-error');
+    if (e) e.textContent = msg || '';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function refreshMyId() { if (window.Net && Net.socket) state.myId = Net.socket.id; }
+
+  byId('btn-mg-create').addEventListener('click', async () => {
+    setError('');
+    if (!requireNet()) return setError('اتصال به سرور برقرار نشد');
+    const res = await Net.mgCreate(myName());
+    if (!res || !res.success) setError((res && res.error) || 'خطا در ساخت اتاق');
+  });
+
+  byId('btn-mg-join').addEventListener('click', async () => {
+    setError('');
+    if (!requireNet()) return setError('اتصال به سرور برقرار نشد');
+    const code = (byId('mg-join-code') && byId('mg-join-code').value || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{6}$/.test(code)) return setError('کد اتاق باید ۶ حرف لاتین/عدد باشد');
+    const res = await Net.mgJoin(code, myName());
+    if (!res || !res.success) setError((res && res.error) || 'خطا در ورود به اتاق');
+  });
+
+  function updateTdCounts(t, d) {
+    const el = byId('mg-td-custom-count');
+    if (el && typeof t === 'number') el.textContent = `دلخواه‌های شما: ${t} حقیقت · ${d} جرئت`;
+  }
+
+  function renderRoom(d) {
+    refreshMyId();
+    state.code = d.code || state.code;
+    state.game = d.game || 'ttt';
+    state.players = d.players || [];
+    state.isHost = !!(d.hostId && d.hostId === state.myId);
+    const codeEl = byId('mg-code');
+    if (codeEl) codeEl.textContent = state.code || '------';
+    const pickedEl = byId('mg-picked');
+    if (pickedEl) pickedEl.textContent = (MG_GAMES[state.game] || 'دوز') + ' انتخاب شده';
+    document.querySelectorAll('#mg-game-picker .mini-mode').forEach(b => {
+      b.classList.toggle('active', b.dataset.game === state.game);
+      b.disabled = !state.isHost;
+    });
+    const list = byId('mg-players');
+    if (list) {
+      list.innerHTML = '';
+      for (const p of state.players) {
+        const row = document.createElement('div');
+        row.className = 'lobby-player-row';
+        row.innerHTML = '<span>' + escapeHtml(p.username) + (p.isHost ? ' <em class="host-tag">میزبان</em>' : '') + '</span>';
+        list.appendChild(row);
+      }
+    }
+    const startBtn = byId('mg-start');
+    if (startBtn) startBtn.classList.toggle('hide', !state.isHost);
+    const hint = byId('mg-hint');
+    if (hint) hint.textContent = state.isHost ? 'دوست‌ت با کد وارد می‌شود؛ بازی را انتخاب و بعد شروع کن.' : 'منتظر میزبان بمان تا بازی را انتخاب و شروع کند...';
+    updateTdCounts(d.truthCount, d.dareCount);
+  }
+
+  const modeBtns = document.querySelectorAll('#mg-game-picker .mini-mode');
+  modeBtns.forEach(btn => btn.addEventListener('click', async () => {
+    if (!state.isHost) return;
+    state.picked = btn.dataset.game;
+    const res = await Net.mgPick(btn.dataset.game);
+    if (res && res.success === false) toast(res.error || 'خطا در انتخاب بازی');
+  }));
+
+  byId('mg-start').addEventListener('click', async () => {
+    const res = await Net.mgStart();
+    if (res && res.success === false) toast(res.error || 'خطا در شروع بازی');
+  });
+
+  byId('mg-leave').addEventListener('click', () => { Net.mgLeave(); show('more-screen'); });
+
+  const copyBtn = byId('mg-copy-code');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    const code = state.code;
+    if (!code) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(() => {});
+    toast('📋 کد کپی شد: ' + code);
+  });
+
+  function onGameStarted(d) {
+    refreshMyId();
+    state.code = d.code || state.code;
+    if (d.game === 'ttt') {
+      state.tttSeat = (d.roles && d.roles[state.myId]) || null;
+      state.tttBoard = Array(9).fill(null);
+      state.tttTurn = 'X';
+      state.tttWinner = null;
+      byId('mg-ttt-again').classList.add('hide');
+      renderTtt();
+      show('mg-ttt-screen');
+    } else if (d.game === 'chess') {
+      state.chessColor = (d.roles && d.roles[state.myId]) || null;
+      state.chess = new Chess();
+      state.chessSelected = null;
+      state.chessGameOver = false;
+      const infoEl = byId('mg-chess-info');
+      if (infoEl) infoEl.textContent = state.chessColor === 'w' ? 'شما سفید هستید (اول شما حرکت می‌کنید)' : 'شما سیاه هستید (حریف سفید اول حرکت می‌کند)';
+      byId('mg-chess-again').classList.add('hide');
+      renderChess();
+      show('mg-chess-screen');
+    } else if (d.game === 'tod') {
+      state.tdHolderId = d.turn || null;
+      state.tdIdx = 0;
+      byId('mg-td-turn').textContent = 'نوبت: ' + (d.turnName || '');
+      byId('mg-td-text').textContent = 'دارندهٔ نوبت: حقیقت یا جرئت را انتخاب کن';
+      byId('mg-td-label').textContent = '🎲';
+      updateTdButtons();
+      show('mg-td-screen');
+    }
+  }
+
+  if (window.Net) {
+    Net.on('mg_room_updated', (d) => { renderRoom(d); show('mg-room'); });
+    Net.on('mg_back_to_room', (d) => { renderRoom(d); show('mg-room'); });
+    Net.on('mg_game_started', (d) => onGameStarted(d));
+    Net.on('mg_ttt', (d) => onTttState(d));
+    Net.on('mg_chess', (d) => onChessState(d));
+    Net.on('mg_td_questions', (d) => updateTdCounts(d.truthCount, d.dareCount));
+    Net.on('mg_td_card', (d) => onTdCard(d));
+    Net.on('mg_td_turn', (d) => onTdTurn(d));
+    Net.on('mg_game_over', (d) => { toast((d && d.message) || 'بازی متوقف شد'); show('more-screen'); });
+  }
+
+  /* ---------- دوز آنلاین ---------- */
+  function renderTtt() {
+    const boardEl = byId('mg-ttt-board');
+    boardEl.innerHTML = '';
+    const myTurn = !!state.tttSeat && !state.tttWinner && state.tttTurn === state.tttSeat;
+    for (let i = 0; i < 9; i++) {
+      const cell = state.tttBoard[i];
+      const b = document.createElement('button');
+      b.className = 'ttt-cell' + (cell ? ' filled' : '');
+      b.textContent = cell || '';
+      b.disabled = !myTurn || !!cell;
+      b.addEventListener('click', () => Net.mgTttMove(i));
+      boardEl.appendChild(b);
+    }
+    const s = byId('mg-ttt-status');
+    if (state.tttWinner) {
+      s.textContent = state.tttWinner === 'draw' ? 'مساوی شد!' : (state.tttWinner === state.tttSeat ? 'شما بردید 🎉' : 'حریفت برد 😈');
+      if (state.isHost) byId('mg-ttt-again').classList.remove('hide');
+    } else if (state.tttSeat) {
+      s.textContent = myTurn ? 'نوبت شما (' + state.tttSeat + ')' : 'نوبت حریف است';
+    } else {
+      s.textContent = 'در انتظار حریف...';
+    }
+  }
+
+  function onTttState(d) {
+    state.tttBoard = d.board || [];
+    state.tttTurn = d.turn;
+    state.tttWinner = d.winner;
+    renderTtt();
+  }
+
+  byId('mg-ttt-again').addEventListener('click', async () => {
+    const res = await Net.mgPlayAgain();
+    if (res && res.success === false) toast(res.error || 'خطا');
+  });
+  byId('mg-ttt-leave').addEventListener('click', () => { Net.mgLeave(); show('more-screen'); });
+
+  /* ---------- شطرنج آنلاین ---------- */
+  const WHITE_G = { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' };
+  const BLACK_G = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+
+  function boardSquares() {
+    if (!state.chess) return [];
+    const out = [];
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+      const cell = state.chess.board()[r][f];
+      out.push({ r, f, sq: 'abcdefgh'[f] + (8 - r), cell });
+    }
+    return out;
+  }
+
+  function renderChess() {
+    const boardEl = byId('mg-chess-board');
+    if (!state.chess) return;
+    boardEl.innerHTML = '';
+    const myTurn = !state.chessGameOver && state.chess.turn() === state.chessColor;
+    const targets = new Set();
+    if (state.chessSelected && myTurn) {
+      try { state.chess.moves({ square: state.chessSelected, verbose: true }).forEach(mv => targets.add(mv.to)); } catch (e) { }
+    }
+    for (const item of boardSquares()) {
+      const btn = document.createElement('button');
+      btn.className = 'chess-square' + ((item.r + item.f) % 2 ? ' dark' : ' light')
+        + (state.chessSelected === item.sq ? ' selected' : '')
+        + (targets.has(item.sq) ? ' target' : '');
+      btn.dataset.sq = item.sq;
+      btn.innerHTML = item.cell ? (item.cell.color === 'w' ? WHITE_G[item.cell.type] : BLACK_G[item.cell.type]) : '';
+      btn.addEventListener('click', () => onChessCell(item.sq, item.cell));
+      boardEl.appendChild(btn);
+    }
+    const statusEl = byId('mg-chess-status');
+    if (state.chessGameOver) {
+      statusEl.textContent = chessResult();
+      if (state.isHost) byId('mg-chess-again').classList.remove('hide');
+    } else {
+      statusEl.textContent = myTurn ? 'نوبت شما' : 'نوبت حریف';
+    }
+  }
+
+  function chessResult() {
+    const g = state.chess;
+    if (g.isCheckmate()) return 'مات شد! ' + (g.turn() === 'w' ? 'سیاه' : 'سفید') + ' برد 🎉';
+    if (g.isStalemate()) return 'رخوت — مساوی شد';
+    if (g.isDraw()) return 'مساوی شد';
+    return 'پایان بازی';
+  }
+
+  function onChessCell(sq, cellData) {
+    if (!state.chess || state.chessGameOver) return;
+    if (state.chess.turn() !== state.chessColor) return;
+    if (state.chessSelected && state.chessSelected !== sq) {
+      const mv = state.chess.move({ from: state.chessSelected, to: sq, promotion: 'q' });
+      if (mv) {
+        Net.mgChessMove(state.chess.fen(), mv.san);
+        state.chessSelected = null;
+        state.chessGameOver = state.chess.isGameOver();
+        renderChess();
+        return;
+      }
+    }
+    if (cellData && cellData.color === state.chessColor) {
+      state.chessSelected = state.chessSelected === sq ? null : sq;
+    } else {
+      state.chessSelected = null;
+    }
+    renderChess();
+  }
+
+  function onChessState(d) {
+    if (!state.chess) return;
+    try { state.chess.load(d.fen); } catch (e) { return; }
+    state.chessSelected = null;
+    state.chessGameOver = state.chess.isGameOver();
+    renderChess();
+  }
+
+  byId('mg-chess-again').addEventListener('click', async () => {
+    const res = await Net.mgPlayAgain();
+    if (res && res.success === false) toast(res.error || 'خطا');
+  });
+  byId('mg-chess-leave').addEventListener('click', () => { Net.mgLeave(); show('more-screen'); });
+
+  /* ---------- جرئت یا حقیقت آنلاین ---------- */
+  function isHolder() { return window.Net && Net.socket && state.tdHolderId === Net.socket.id; }
+
+  function updateTdButtons() {
+    const holder = isHolder();
+    const truth = byId('mg-td-truth');
+    const dare = byId('mg-td-dare');
+    const pass = byId('mg-td-pass');
+    if (truth) truth.disabled = !holder;
+    if (dare) dare.disabled = !holder;
+    if (pass) pass.disabled = !(holder || state.isHost);
+  }
+
+  function onTdCard(d) {
+    const labelEl = byId('mg-td-label');
+    const textEl = byId('mg-td-text');
+    const cardEl = byId('mg-td-card');
+    if (!labelEl || !textEl || !cardEl) return;
+    labelEl.textContent = d.kind === 'truth' ? '🗣 حقیقت' : '😈 جرئت';
+    textEl.textContent = d.text;
+    cardEl.classList.remove('flash', 'truth-card', 'dare-card');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('flash', d.kind === 'truth' ? 'truth-card' : 'dare-card');
+  }
+
+  function onTdTurn(d) {
+    state.tdIdx = d.idx;
+    state.tdHolderId = d.by;
+    const turnEl = byId('mg-td-turn');
+    if (turnEl) turnEl.textContent = 'نوبت: ' + (d.byName || '');
+    updateTdButtons();
+  }
+
+  byId('mg-td-truth').addEventListener('click', () => Net.mgTdDraw('truth'));
+  byId('mg-td-dare').addEventListener('click', () => Net.mgTdDraw('dare'));
+  byId('mg-td-pass').addEventListener('click', () => Net.mgTdPass());
+
+  async function addOnlineCustom(kind) {
+    const input = byId('mg-td-custom-input');
+    const text = (input && input.value || '').replace(/[<>]/g, '').trim().slice(0, 200);
+    if (text.length < 2) { toast('حداقل ۲ حرف بنویس'); return; }
+    const res = await Net.mgTdAdd(kind, text);
+    if (res && res.success === false) { toast(res.error || 'خطا در افزودن'); return; }
+    input.value = '';
+    toast(kind === 'truth' ? '✅ به حقیقت‌ها اضافه شد' : '✅ به جرئت‌ها اضافه شد');
+  }
+
+  const addT = byId('mg-td-add-truth');
+  const addD = byId('mg-td-add-dare');
+  if (addT) addT.addEventListener('click', () => addOnlineCustom('truth'));
+  if (addD) addD.addEventListener('click', () => addOnlineCustom('dare'));
+
+  byId('mg-td-leave').addEventListener('click', () => { Net.mgLeave(); show('more-screen'); });
 })();

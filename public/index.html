@@ -135,6 +135,11 @@
     <h2 class="title small">بازی‌های بیشتر</h2>
     <p class="story">چند بازی کوچک برای وقت‌گذرانی — بدون نیاز به اینترنت و دوست</p>
     <div class="more-grid">
+      <button class="more-card" data-open="mg-menu">
+        <span class="more-emoji">🕹️</span>
+        <span class="more-name">بازی‌های آنلاین</span>
+        <span class="more-desc">دوز، شطرنج و جرئت یا حقیقت — با کد اتاق دور هم جمع شوید</span>
+      </button>
       <button class="more-card" data-open="ttt-screen">
         <span class="more-emoji">⭕❌</span>
         <span class="more-name">دوز</span>
@@ -210,7 +215,128 @@
       <button id="td-truth" class="btn btn-truth">حقیقت</button>
       <button id="td-dare" class="btn btn-dare">جرئت</button>
     </div>
+    <div class="td-custom">
+      <label class="field">
+        <span>سوال یا جرئت دلخواهت را بنویس:</span>
+        <input id="td-custom-input" type="text" maxlength="200" placeholder="مثلاً: عجیب‌ترین شهری که رفتی کجاست؟" autocomplete="off">
+      </label>
+      <div class="td-buttons">
+        <button id="td-add-truth" class="btn btn-truth btn-mini">+ به حقیقت‌ها</button>
+        <button id="td-add-dare" class="btn btn-dare btn-mini">+ به جرئت‌ها</button>
+      </div>
+      <p id="td-custom-count" class="mini-status">دلخواه‌های تو: 0 حقیقت · 0 جرئت</p>
+    </div>
     <button class="btn btn-ghost" data-back="more-screen">برگشت</button>
+  </div>
+</div>
+
+<!-- ============ لابی آنلاین مینی‌گیم‌ها ============ -->
+<div id="mg-menu" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">🕹️</div>
+    <h2 class="title small">مینی‌گیم‌های آنلاین</h2>
+    <p class="story">یک اتاق بساز یا با کد دوستت وارد شو — بعد بازی را انتخاب کنید و آنلاین بازی کنید.<br><span class="pick-games">دوز • شطرنج • جرئت یا حقیقت</span></p>
+    <div class="card">
+      <label class="field">
+        <span>نام شما</span>
+        <input id="mg-username" type="text" maxlength="16" placeholder="مثلاً: فردین" autocomplete="off">
+      </label>
+      <button id="btn-mg-create" class="btn btn-primary">ساخت اتاق جدید</button>
+      <div class="divider"><span>یا</span></div>
+      <label class="field">
+        <span>ورود با کد اتاق</span>
+        <div class="join-row">
+          <input id="mg-join-code" type="text" maxlength="6" placeholder="کد ۶ حرفی را وارد کنید" autocomplete="off" inputmode="latin" style="text-transform:uppercase">
+          <button id="btn-mg-join" class="btn btn-ghost">ورود</button>
+        </div>
+      </label>
+      <p id="mg-error" class="error-text"></p>
+    </div>
+    <button class="btn btn-ghost" data-back="more-screen">برگشت</button>
+  </div>
+</div>
+
+<!-- ============ اتاق انتظار مینی‌گیم ============ -->
+<div id="mg-room" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">🎲</div>
+    <h2 class="title small">اتاق بازی</h2>
+    <p class="story">این کد را برای دوست‌ت بفرست؛ با همین کد وارد اتاق می‌شود:</p>
+    <div class="room-code-box">
+      <span id="mg-code" class="room-code">------</span>
+      <button id="mg-copy-code" class="copy-btn" title="کپی کد">📋</button>
+    </div>
+    <div class="field-label">اعضای اتاق:</div>
+    <div id="mg-players" class="lobby-players"></div>
+    <div class="field-label">انتخاب بازی (میزبان تصمیم می‌گیرد):</div>
+    <div class="more-modes" id="mg-game-picker">
+      <button class="mini-mode active" data-game="ttt">دوز</button>
+      <button class="mini-mode" data-game="chess">شطرنج</button>
+      <button class="mini-mode" data-game="tod">جرئت یا حقیقت</button>
+    </div>
+    <p id="mg-picked" class="mini-status">دوز انتخاب شده</p>
+    <p id="mg-hint" class="mini-status mg-hint"></p>
+    <button id="mg-start" class="btn btn-primary">شروع بازی</button>
+    <button id="mg-leave" class="btn btn-ghost">خروج از اتاق</button>
+    <button class="btn btn-ghost" data-back="more-screen">بازگشت به منو</button>
+  </div>
+</div>
+
+<!-- ============ دوز آنلاین ============ -->
+<div id="mg-ttt-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">⭕❌</div>
+    <h2 class="title small">دوز آنلاین</h2>
+    <p id="mg-ttt-status" class="mini-status">نوبت X</p>
+    <div id="mg-ttt-board" class="ttt-board"></div>
+    <button id="mg-ttt-again" class="btn btn-primary hide">بازی دوباره</button>
+    <button id="mg-ttt-leave" class="btn btn-ghost">خروج از اتاق</button>
+    <button class="btn btn-ghost" data-back="more-screen">بازگشت به منو</button>
+  </div>
+</div>
+
+<!-- ============ شطرنج آنلاین ============ -->
+<div id="mg-chess-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">♟️</div>
+    <h2 class="title small">شطرنج آنلاین</h2>
+    <p id="mg-chess-info" class="mini-status">شما: سفید (شما اول حرکت می‌کنید)</p>
+    <p id="mg-chess-status" class="mini-status">نوبت سفید</p>
+    <div id="mg-chess-board" class="chess-board"></div>
+    <button id="mg-chess-again" class="btn btn-primary hide">بازی دوباره</button>
+    <button id="mg-chess-leave" class="btn btn-ghost">خروج از اتاق</button>
+    <button class="btn btn-ghost" data-back="more-screen">بازگشت به منو</button>
+  </div>
+</div>
+
+<!-- ============ جرئت یا حقیقت آنلاین ============ -->
+<div id="mg-td-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">🎭</div>
+    <h2 class="title small">جرئت یا حقیقت آنلاین</h2>
+    <p id="mg-td-turn" class="mini-status">نوبت: —</p>
+    <div id="mg-td-card" class="td-card">
+      <span id="mg-td-label" class="td-label">🎲</span>
+      <p id="mg-td-text" class="td-text">دارندهٔ نوبت: حقیقت یا جرئت؟</p>
+    </div>
+    <div class="td-buttons">
+      <button id="mg-td-truth" class="btn btn-truth">حقیقت</button>
+      <button id="mg-td-dare" class="btn btn-dare">جرئت</button>
+    </div>
+    <button id="mg-td-pass" class="btn btn-ghost">نوبت بعدی ←</button>
+    <div class="td-custom">
+      <label class="field">
+        <span>سوال یا جرئت دلخواهت را به صحنه اضافه کن:</span>
+        <input id="mg-td-custom-input" type="text" maxlength="200" placeholder="مثلاً: عجیب‌ترین شهری که رفتی کجاست؟" autocomplete="off">
+      </label>
+      <div class="td-buttons">
+        <button id="mg-td-add-truth" class="btn btn-truth btn-mini">+ به حقیقت‌ها</button>
+        <button id="mg-td-add-dare" class="btn btn-dare btn-mini">+ به جرئت‌ها</button>
+      </div>
+      <p id="mg-td-custom-count" class="mini-status">دلخواه‌های شما: 0 حقیقت · 0 جرئت</p>
+    </div>
+    <button id="mg-td-leave" class="btn btn-ghost">خروج از اتاق</button>
+    <button class="btn btn-ghost" data-back="more-screen">بازگشت به منو</button>
   </div>
 </div>
 
