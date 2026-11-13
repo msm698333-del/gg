@@ -36,6 +36,16 @@ window.Net = (() => {
 
     socket.on('chat_message', (data) => cb.chat && cb.chat(data));
 
+    socket.on('mg_room_updated', (data) => cb.mgRoomUpdated && cb.mgRoomUpdated(data));
+    socket.on('mg_game_started', (data) => cb.mgGameStarted && cb.mgGameStarted(data));
+    socket.on('mg_ttt', (data) => cb.mgTtt && cb.mgTtt(data));
+    socket.on('mg_chess', (data) => cb.mgChess && cb.mgChess(data));
+    socket.on('mg_td_questions', (data) => cb.mgTdQuestions && cb.mgTdQuestions(data));
+    socket.on('mg_td_card', (data) => cb.mgTdCard && cb.mgTdCard(data));
+    socket.on('mg_td_turn', (data) => cb.mgTdTurn && cb.mgTdTurn(data));
+    socket.on('mg_game_over', (data) => cb.mgGameOver && cb.mgGameOver(data));
+    socket.on('mg_back_to_room', (data) => cb.mgBackToRoom && cb.mgBackToRoom(data));
+
     return socket;
   }
 
@@ -69,6 +79,30 @@ window.Net = (() => {
     sendReachedExit() { emit('reached_exit', {}); },
     sendChat(message) { emit('player_chat', { message }); },
     leaveRoom() { emit('leave_room', {}); },
+    // ============================== مینی‌گیم‌ها ==============================
+    mgCreate(username) {
+      return new Promise(resolve => emit('mg_create', { username }, resolve));
+    },
+    mgJoin(code, username) {
+      return new Promise(resolve => emit('mg_join', { code, username }, resolve));
+    },
+    mgPick(game) {
+      return new Promise(resolve => emit('mg_pick', { game }, resolve));
+    },
+    mgStart() {
+      return new Promise(resolve => emit('mg_start', {}, resolve));
+    },
+    mgLeave() { emit('mg_leave', {}); },
+    mgTttMove(cell) { emit('mg_ttt_move', { cell }); },
+    mgChessMove(fen, san) { emit('mg_chess_move', { fen, san }); },
+    mgTdAdd(kind, text) {
+      return new Promise(resolve => emit('mg_td_add', { kind, text }, resolve));
+    },
+    mgTdDraw(kind) { emit('mg_td_draw', { kind }); },
+    mgTdPass() { emit('mg_td_pass', {}); },
+    mgPlayAgain() {
+      return new Promise(resolve => emit('mg_play_again', {}, resolve));
+    },
     get socket() { return socket; }
   };
 })();
