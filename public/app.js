@@ -6,18 +6,12 @@
 
   const $ = (id) => document.getElementById(id);
 
-  const screens = {
-    menu: $('menu'),
-    lobby: $('lobby'),
-    game: $('game-screen'),
-    end: $('end-screen')
-  };
-
   function show(name) {
-    for (const key of Object.keys(screens)) {
-      screens[key].classList.toggle('hide', key !== name);
-    }
+    document.querySelectorAll('.screen').forEach(el => {
+      el.classList.toggle('hide', el.id !== name);
+    });
   }
+  window.showScreen = show;
 
   // ---------- وضعیت ----------
   const state = {
@@ -164,28 +158,55 @@
     state.players = [];
     state.inGame = false;
     $('menu-error').textContent = '';
+    clearAbilityPoll();
     show('menu');
   }
 
   // ============================ بازی ============================
+  let abilityPoll = null;
+  function clearAbilityPoll() {
+    if (abilityPoll) { clearInterval(abilityPoll); abilityPoll = null; }
+  }
+
   function enterGame() {
-    show('game');
+    show('game-screen');
     state.inGame = true;
     $('hud-code').textContent = state.roomCode || '';
     const role = ROLE_NAME[state.role] || state.role;
     $('hud-role').textContent = role;
     $('hud-role').style.color = state.role === 'farzad' ? '#c07dff' : state.role === 'dian' ? '#ff9dc4' : '#6db8ff';
-    // فلش مخصوص دیان
+    // فلش مخصوص دیان، برق‌زدگی مخصوص فرزاد
     $('btn-flash-burst').classList.toggle('hide', state.role !== 'dian');
-    // فرزاد نیازی به دکمه چراغ‌قوه ندارد
     $('btn-flashlight').classList.toggle('hide', state.role === 'farzad');
+    $('btn-sprint').classList.toggle('hide', state.role !== 'farzad');
     updateKeysHUD(0);
     $('chat-messages').innerHTML = '';
+    clearAbilityPoll();
+    abilityPoll = setInterval(() => {
+      const btn = $('btn-sprint');
+      const a = Horror.abilityState ? Horror.abilityState() : { t: 0, cd: 0 };
+      if (a.t > 0) {
+        btn.textContent = '⚡';
+        btn.classList.add('active');
+        btn.classList.remove('cooldown');
+      } else if (a.cd > 0) {
+        btn.textContent = String(Math.ceil(a.cd));
+        btn.classList.add('cooldown');
+        btn.classList.remove('active');
+      } else {
+        btn.textContent = '⚡';
+        btn.classList.remove('cooldown', 'active');
+      }
+    }, 250);
   }
 
   $('btn-exit-game').addEventListener('click', () => {
     Net.leaveRoom();
     backToMenu();
+  });
+
+  $('btn-sprint').addEventListener('click', () => {
+    if (window.Horror && Horror.useAbility) Horror.useAbility();
   });
 
   $('btn-flashlight').addEventListener('click', () => {
@@ -318,7 +339,7 @@
     $('end-icon').textContent = win ? '🎉' : data.winner === 'farzad' ? '😈' : '🔌';
     $('end-title').textContent = win ? 'فرار کردید!' : data.winner === 'farzad' ? 'سایه گرفت...' : 'بازی متوقف شد';
     $('end-message').textContent = data.message || '';
-    show('end');
+    show('end-screen');
   });
 
   Net.on('chat', (data) => addChatLine(data.roleName || '', data.username || '', data.message || ''));
@@ -342,7 +363,7 @@
       $('end-icon').textContent = winner === 'farzad' ? '😈' : '🎉';
       $('end-title').textContent = winner === 'farzad' ? 'سایه گرفت...' : 'فرار کردید!';
       $('end-message').textContent = message || '';
-      show('end');
+      show('end-screen');
     }
   });
   show('menu');

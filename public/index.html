@@ -24,8 +24,7 @@
         <input id="username-input" type="text" maxlength="16" placeholder="مثلاً: فردین" autocomplete="off">
       </label>
 
-      <div class="field-label">حالت بازی را انتخاب کنید:</div>
-      <div class="modes" id="mode-buttons">
+      <div class="field-label">حالت بازی را انتخاب کنید:</div>      <div class="modes" id="mode-buttons">
         <button class="mode-btn active" data-mode="trio">
           <span class="mode-title">سه نفره</span>
           <span class="mode-desc">فردین + دیان (شما دو نفر) در مقابل فرزاد</span>
@@ -43,7 +42,6 @@
       <button id="btn-create-room" class="btn btn-primary">ساخت اتاق جدید</button>
 
       <div class="divider"><span>یا</span></div>
-
       <label class="field">
         <span>ورود با کد لابی</span>
         <div class="join-row">
@@ -52,9 +50,11 @@
         </div>
       </label>
       <p id="menu-error" class="error-text"></p>
+
+      <button id="btn-more-games" class="btn btn-ghost btn-more-games">🎮 بازی‌های بیشتر (دوز، شطرنج، جرئت یا حقیقت)</button>
     </div>
 
-    <p class="tips">حرکت: WASD یا جهت‌دار / لمس و کشیدن صفحه &nbsp;•&nbsp; چراغ‌قوه: F &nbsp;•&nbsp; فلش دیان (stun): E &nbsp;•&nbsp; هدفون پیشنهاد می‌شود 🎧</p>
+    <p class="tips">حرکت: WASD یا جهت‌دار / لمس و کشیدن &nbsp;•&nbsp; چراغ‌قوه: F &nbsp;•&nbsp; فلش دیان: E &nbsp;•&nbsp; برق‌زدگی فرزاد (سرعت): Shift &nbsp;•&nbsp; هدفون پیشنهاد می‌شود 🎧</p>
   </div>
 </div>
 
@@ -97,6 +97,7 @@
   <div class="action-cluster">
     <button id="btn-flashlight" class="action-btn">🔦</button>
     <button id="btn-flash-burst" class="action-btn flash-burst hide">✨</button>
+    <button id="btn-sprint" class="action-btn sprint-btn hide" title="برق‌زدگی (Shift)">⚡</button>
   </div>
 
   <!-- چت -->
@@ -127,11 +128,98 @@
   </div>
 </div>
 
+<!-- ============ بازی‌های بیشتر ============ -->
+<div id="more-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">🎲</div>
+    <h2 class="title small">بازی‌های بیشتر</h2>
+    <p class="story">چند بازی کوچک برای وقت‌گذرانی — بدون نیاز به اینترنت و دوست</p>
+    <div class="more-grid">
+      <button class="more-card" data-open="ttt-screen">
+        <span class="more-emoji">⭕❌</span>
+        <span class="more-name">دوز</span>
+        <span class="more-desc">مقابل هوش مصنوعی یا دو نفره روی یک دستگاه — سه‌تا یکجا!</span>
+      </button>
+      <button class="more-card" data-open="chess-screen">
+        <span class="more-emoji">♟️</span>
+        <span class="more-name">شطرنج</span>
+        <span class="more-desc">دو نفره روی یک دستگاه یا مقابل هوش مصنوعی — با قوانین کامل</span>
+      </button>
+      <button class="more-card" data-open="td-screen">
+        <span class="more-emoji">🎭</span>
+        <span class="more-name">جرئت یا حقیقت</span>
+        <span class="more-desc">کارتی بازی جفتی و گروهی — حقیقت‌ها و جرئت‌های فارسی</span>
+      </button>
+      <button class="more-card" id="open-trust">
+        <span class="more-emoji">🕵️</span>
+        <span class="more-name">TRUST – اعتماد</span>
+        <span class="more-desc">بازی ۲بعدی آنلاین — حالت محلی با بات‌ها بدون سرور کار می‌کند</span>
+      </button>
+    </div>
+    <button class="btn btn-ghost" data-back="menu">برگشت به منوی اصلی</button>
+  </div>
+</div>
+
+<!-- ============ دوز ============ -->
+<div id="ttt-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">⭕</div>
+    <h2 class="title small">دوز</h2>
+    <div class="more-modes" id="ttt-modes">
+      <button class="mini-mode active" data-mode="ai">مقابل هوش مصنوعی</button>
+      <button class="mini-mode" data-mode="2p">دو نفره (یک دستگاه)</button>
+    </div>
+    <p id="ttt-status" class="mini-status">نوبت شما (×) است</p>
+    <div id="ttt-board" class="ttt-board" role="grid" aria-label="برد دوز"></div>
+    <button id="ttt-reset" class="btn btn-primary mini-wide">بازی جدید</button>
+    <button class="btn btn-ghost" data-back="more-screen">برگشت</button>
+  </div>
+</div>
+
+<!-- ============ شطرنج ============ -->
+<div id="chess-screen" class="screen hide">
+  <div class="menu-inner chess-wrap">
+    <div class="logo-shadow small">♟️</div>
+    <h2 class="title small">شطرنج</h2>
+    <div class="more-modes" id="chess-modes">
+      <button class="mini-mode active" data-mode="ai">مقابل هوش مصنوعی (شما سفید)</button>
+      <button class="mini-mode" data-mode="2p">دو نفره (یک دستگاه)</button>
+    </div>
+    <p id="chess-status" class="mini-status">سفید شروع می‌کند</p>
+    <div id="chess-board" class="chess-board" role="grid" aria-label="صفحه شطرنج"></div>
+    <div class="chess-meta"><span id="chess-moves-info"></span></div>
+    <button id="chess-reset" class="btn btn-primary mini-wide">بازی جدید</button>
+    <button class="btn btn-ghost" data-back="more-screen">برگشت</button>
+  </div>
+</div>
+
+<!-- ============ جرئت یا حقیقت ============ -->
+<div id="td-screen" class="screen hide">
+  <div class="menu-inner">
+    <div class="logo-shadow small">🎭</div>
+    <h2 class="title small">جرئت یا حقیقت</h2>
+    <div class="more-modes" id="td-modes">
+      <button class="mini-mode active" data-mode="pair">جفتی</button>
+      <button class="mini-mode" data-mode="group">گروهی</button>
+    </div>
+    <div id="td-card" class="td-card">
+      <span id="td-label" class="td-label">🎲</span>
+      <p id="td-text" class="td-text">یکی از دکمه‌ها را بزن تا کارت بگیری!</p>
+    </div>
+    <div class="td-buttons">
+      <button id="td-truth" class="btn btn-truth">حقیقت</button>
+      <button id="td-dare" class="btn btn-dare">جرئت</button>
+    </div>
+    <button class="btn btn-ghost" data-back="more-screen">برگشت</button>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/net.js"></script>
 <script src="/horror.js"></script>
 <script src="/app.js"></script>
+<script type="module" src="/minigames.js"></script>
 </body>
 </html>

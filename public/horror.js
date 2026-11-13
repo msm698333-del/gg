@@ -38,6 +38,8 @@ window.Horror = (() => {
     flashT: 0,
     hb: 0,
     bph: 0,
+    abilityT: 0,      // زمان باقی‌مانده‌ی «برق‌زدگی» فرزاد (ثانیه)
+    abilityCd: 0,     // خنک‌شدن ابیلتی فرزاد (ثانیه)
     last: 0,
     mt: 0,
     joy: { on: 0, id: null, ox: 0, oy: 0, kx: 0, ky: 0, dx: 0, dy: 0 },
@@ -249,6 +251,7 @@ window.Horror = (() => {
       S.kb[e.code] = 1;
       if (e.code === 'KeyF') { e.preventDefault(); toggleFlash(); }
       if (e.code === 'KeyE') { e.preventDefault(); flashBurst(); }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { e.preventDefault(); useAbility(); }
     });
     addEventListener('keyup', e => { S.kb[e.code] = 0; });
 
@@ -286,6 +289,23 @@ window.Horror = (() => {
     net().sendFlashBurst();
   }
 
+  // ابیلتی فرزاد: «برق‌زدگی» — ۴ ثانیه ۴۰٪ سریع‌تر، خنک‌شدن ۱۵ ثانیه
+  function useAbility() {
+    const local = S.players[S.localId];
+    if (!local || local.role !== 'farzad' || S.screen !== 'play') return;
+    if (S.abilityCd > 0) { ui.onToast('⏳ برق‌زدگی هنوز خنک نشده...'); return; }
+    if (local.stun && local.stun > 0) { ui.onToast('💫 stunned!'); return; }
+    S.abilityT = 4;
+    S.abilityCd = 15;
+    burst(local.x, local.y, 28, '#c07dff', 240);
+    showBanner('⚡ برق‌زدگی! سرعتتان بالا رفت!');
+    playTone(180, .35, 'sawtooth', .12, -120);
+  }
+
+  function abilityState() {
+    return { t: S.abilityT, cd: S.abilityCd };
+  }
+
   function net() { return window.Net; }
 
   // ---------- بروزرسانی ----------
@@ -316,6 +336,8 @@ window.Horror = (() => {
     S.cam.y += (me.y - S.cam.y) * Math.min(1, 8 * dt);
     S.shake = Math.max(0, S.shake - 45 * dt);
     S.flashT -= dt;
+    if (S.abilityT > 0) S.abilityT = Math.max(0, S.abilityT - dt);
+    if (S.abilityCd > 0) S.abilityCd = Math.max(0, S.abilityCd - dt);
 
     // 30ms یک‌بار موقعیت را به سرور بفرست
     const now = performance.now();
@@ -362,15 +384,26 @@ window.Horror = (() => {
       }
     }
 
-    // فرزاد خشمگین
+    // فرزاد خشمگین (و «برق‌زدگی» = ابیلتی سرعت)
     if (me.angry && me.angry > 0) me.angry -= dt;
-    me.sp = me.role === 'farzad' ? (me.angry > 0 ? 108 : 62 + S.gotCount * 9) : 120;
+    me.sp = me.role === 'farzad'
+      ? (S.abilityT > 0 ? 1.4 : 1) * (me.angry > 0 ? 108 : 62 + S.gotCount * 9)
+      : 120;
 
     // فرزاد هوش مصنوعی (فقط در حالت solo برای همان کلاینت)
     if (S.farzadAI && farzad && farzad.x !== undefined && farzad.ai) {
       if (farzad.stun && farzad.stun > 0) farzad.stun -= dt;
       const target = Object.values(S.players).find(p => p.role !== 'farzad');
-      if (target && S.screen === 'play' && !(farzad.stun && farzad.stun > 0)) chaseAI(farzad, target, dt);
+      if (target && S.screen === 'play' && !(farzad.stun && farzad.stun > 0)) {
+        // ابیلتی هوش مصنوعی فرزاد (وقتی نزدیک شد سرعتش بیشتر می‌شود)
+        const dFar = Math.hypot(farzad.x - target.x, farzad.y - target.y);
+        if (S.abilityCd <= 0 && dFar < 430 && Math.random() < dt * 0.8) {
+          S.abilityT = 4; S.abilityCd = 15;
+          burst(farzad.x, farzad.y, 26, '#c07dff', 240);
+          showBanner('😈 فرزاد رگ غیرت کشید!');
+        }
+        chaseAI(farzad, target, dt);
+      }
     }
     // دیان هوش مصنوعی (solo: دنبال فردین)
     if (S.dianAI) {
@@ -433,7 +466,7 @@ window.Horror = (() => {
       }
     }
     const a = Math.atan2(gy - far.y, gx - far.x);
-    const sp = far.angry > 0 ? 108 : 62 + S.gotCount * 9;
+    const sp = (far.angry > 0 ? 108 : 62 + S.gotCount * 9) * (S.abilityT > 0 ? 1.4 : 1);
     far.x += Math.cos(a) * sp * dt;
     far.y += Math.sin(a) * sp * dt;
     far.ang = a;
@@ -780,7 +813,7 @@ window.Horror = (() => {
   return {
     init, startMatch, updateRemotePlayer, applyFlashToggle,
     applyKeyCollected, applyFarzadEnraged, applyFarzadStunned, applyGameOver,
-    resumeFromQuiz,
+    resumeFromQuiz, useAbility, abilityState,
     // برای دیباگ:
     _state: S
   };
