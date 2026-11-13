@@ -24,6 +24,9 @@ const io = new Server(server, {
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/trust', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'trust.html'));
+});
 
 // ============================== GAME CONSTANTS ==============================
 const CODE_LENGTH = 6;
